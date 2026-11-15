@@ -1,0 +1,951 @@
+﻿@model IEnumerable<A246F_IQC_Monitoring.Models.IQCDataViewModel>
+
+@{
+    ViewData["Title"] = "IQC - Data";
+
+    var vendors = ViewBag.Vendors as List<string> ?? new List<string>();
+    var parts = ViewBag.Parts as List<string> ?? new List<string>();
+    var parameters = ViewBag.Parameters as List<string> ?? new List<string>();
+
+    string selectedVendor = ViewBag.SelectedVendor ?? "";
+    string selectedPart = ViewBag.SelectedPart ?? "";
+    string selectedParameter = ViewBag.SelectedParameter ?? "";
+    string selectedCpkLevel = ViewBag.SelectedCpkLevel ?? "";
+    string selectedShift = ViewBag.SelectedShift ?? "";
+    string selectedDate = ViewBag.SelectedDate ?? "";
+}
+
+<div class="iqc-page">
+
+    <div class="iqc-filter-card">
+
+        <div class="iqc-filter-grid">
+
+            <div class="iqc-filter-item">
+                <label for="shift">Shift</label>
+                <select id="shift" class="iqc-control">
+                    <option value="" selected="@(string.IsNullOrEmpty(selectedShift))">
+                        Select Shift
+                    </option>
+                    <option value="A" selected="@(selectedShift == "A")">
+                        A (07:00-19:00)
+                    </option>
+                    <option value="B" selected="@(selectedShift == "B")">
+                        B (19:00-07:00)
+                    </option>
+                </select>
+            </div>
+
+            <div class="iqc-filter-item">
+                <label for="date">Date</label>
+                <input type="date"
+                       id="date"
+                       class="iqc-control"
+                       value="@selectedDate" />
+            </div>
+
+            <div class="iqc-filter-item">
+                <label for="vendor">Vendor</label>
+                <select id="vendor" class="iqc-control">
+                    <option value="">All</option>
+
+                    @foreach (var vendor in vendors)
+                    {
+                        <option value="@vendor"
+                                selected="@(selectedVendor == vendor)">
+                            @vendor
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="iqc-filter-item cpk-filter-item">
+                <label>CPK Level</label>
+
+                <div class="cpk-dropdown" id="cpkDropdown">
+
+                    <input type="hidden"
+                           id="cpkLevel"
+                           name="cpkLevel"
+                           value="@selectedCpkLevel" />
+
+                    <button type="button"
+                            class="cpk-dropdown-button"
+                            id="cpkDropdownButton">
+
+                        <span id="cpkSelectedText">
+                            @(string.IsNullOrEmpty(selectedCpkLevel) ? "All" : selectedCpkLevel)
+                        </span>
+
+                        <i class="bi bi-chevron-up"></i>
+
+                    </button>
+
+                    <div class="cpk-dropdown-menu" id="cpkDropdownMenu">
+
+                        <div class="cpk-option @(string.IsNullOrEmpty(selectedCpkLevel) ? "selected" : "")"
+                             data-value="">
+                            All
+                        </div>
+
+                        <div class="cpk-option cpk-excellent @(selectedCpkLevel == "Excellent" ? "selected" : "")"
+                             data-value="Excellent">
+                            Excellent (≥ 1.67)
+                        </div>
+
+                        <div class="cpk-option cpk-good @(selectedCpkLevel == "Good" ? "selected" : "")"
+                             data-value="Good">
+                            Good (≥ 1.33)
+                        </div>
+
+                        <div class="cpk-option cpk-acceptable @(selectedCpkLevel == "Acceptable" ? "selected" : "")"
+                             data-value="Acceptable">
+                            Acceptable (≥ 1.0)
+                        </div>
+
+                        <div class="cpk-option cpk-poor @(selectedCpkLevel == "Poor" ? "selected" : "")"
+                             data-value="Poor">
+                            Poor (&lt; 1.0)
+                        </div>
+
+                        <div class="cpk-option cpk-nodata @(selectedCpkLevel == "NoCpkData" ? "selected" : "")"
+                             data-value="NoCpkData">
+                            No CPK Data
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="iqc-filter-item">
+                <label for="part">Part</label>
+                <select id="part" class="iqc-control">
+                    <option value="">All</option>
+
+                    @foreach (var part in parts)
+                    {
+                        <option value="@part"
+                                selected="@(selectedPart == part)">
+                            @part
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="iqc-filter-item">
+                <label for="parameter">Parameter</label>
+                <select id="parameter" class="iqc-control">
+                    <option value="">All</option>
+
+                    @foreach (var parameter in parameters)
+                    {
+                        <option value="@parameter"
+                                selected="@(selectedParameter == parameter)">
+                            @parameter
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="iqc-filter-actions">
+
+                <button type="button"
+                        class="iqc-search-btn"
+                        onclick="searchIQC()">
+                    <i class="bi bi-search"></i>
+                    Search
+                </button>
+
+                <button type="button"
+                        class="iqc-reset-btn"
+                        onclick="resetIQC()">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                    Reset
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="iqc-data-card">
+
+        <div class="iqc-data-header">
+
+            <div class="iqc-data-title">
+                <div class="iqc-data-icon">
+                    <i class="bi bi-table"></i>
+                </div>
+
+                <span>IQC Data</span>
+            </div>
+
+            <div class="iqc-header-right">
+
+                <button type="button" class="iqc-export-btn">
+                    <i class="bi bi-download"></i>
+                    Export Data
+                </button>
+
+                <button type="button" class="iqc-serin-btn">
+                    <i class="bi bi-archive"></i>
+                    SerinExportData
+                </button>
+
+                <span class="iqc-record-count">
+                    Total <strong>@ViewBag.TotalRecords</strong> records
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div class="iqc-table-wrapper">
+
+            <table class="iqc-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th class="col-wom">WOM</th>
+                        <th class="col-project">Project</th>
+                        <th class="col-site">Site</th>
+                        <th class="col-build">Build</th>
+                        <th class="col-inspection">Inspection Step</th>
+                        <th class="col-station">Station ID</th>
+                        <th class="col-part">Part</th>
+                        <th class="col-vendor">Vendor</th>
+                        <th class="col-lot">Lot ID</th>
+                        <th class="col-line">Line ID</th>
+                        <th class="col-process">Process</th>
+                        <th class="col-category">Category</th>
+                        <th class="col-parameter">Parameter</th>
+                        <th class="col-identifier">Unique Identifier</th>
+                        <th class="col-unit">Unit</th>
+                        <th class="col-sampling">Sampling Plan</th>
+                        <th class="col-nominal">Nominal</th>
+                        <th class="col-usl">USL</th>
+                        <th class="col-lsl">LSL</th>
+
+                        <th class="time-header">
+                            Time
+                        </th>
+
+                        <th class="values-header">
+                            <div class="values-header-inline">
+                                <span class="values-title">Values (CPK)</span>
+
+                                <div class="cpk-legend">
+                                    <span class="legend legend-excellent">
+                                        Excellent
+                                    </span>
+
+                                    <span class="legend legend-good">
+                                        Good
+                                    </span>
+
+                                    <span class="legend legend-fail">
+                                        Fail
+                                    </span>
+                                </div>
+                            </div>
+                        </th>
+                        <th class="edit-header">
+                            Action
+                        </th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    @if (Model.Any())
+                    {
+                        foreach (var item in Model)
+                        {
+                            var cpkClass =
+                            !item.CPK.HasValue
+                            ? "cpk-neutral"
+                            : item.CPK >= 1.67m
+                            ? "cpk-excellent"
+                            : item.CPK >= 1.33m
+                            ? "cpk-good"
+                            : item.CPK >= 1.00m
+                            ? "cpk-warning"
+                            : "cpk-fail";
+
+                            <tr>
+
+                                <td class="col-wom">
+                                    @item.WOM
+                                </td>
+
+                                <td class="col-project">
+                                    @item.Project
+                                </td>
+
+                                <td class="col-site">
+                                    @item.Site
+                                </td>
+
+                                <td class="col-build">
+                                    @item.Build
+                                </td>
+
+                                <td class="col-inspection">
+                                    @item.InspectionStep
+                                </td>
+
+                                <td class="col-station">
+                                    @item.StationId
+                                </td>
+
+                                <td class="col-part">
+                                    @item.Part
+                                </td>
+
+                                <td class="col-vendor">
+                                    @item.Vendor
+                                </td>
+
+                                <td class="col-lot">
+                                    @item.LotId
+                                </td>
+
+                                <td class="col-line">
+                                    @item.LineId
+                                </td>
+
+                                <td class="col-process">
+                                    @item.Process
+                                </td>
+
+                                <td class="col-category">
+                                    @item.Category
+                                </td>
+
+                                <td class="col-parameter">
+                                    @item.Parameter
+                                </td>
+
+                                <td class="col-identifier">
+                                    @item.UniqueIdentifier
+                                </td>
+
+                                <td class="col-unit">
+                                    @item.Unit
+                                </td>
+
+                                <td class="col-sampling">
+                                    @item.SamplingPlan
+                                </td>
+
+                                <td class="numeric col-nominal">
+                                    @(item.Nominal?.ToString("0.###"))
+                                </td>
+
+                                <td class="numeric col-usl">
+                                    @(item.USL?.ToString("0.###"))
+                                </td>
+
+                                <td class="numeric col-lsl">
+                                    @(item.LSL?.ToString("0.###"))
+                                </td>
+
+
+                                <td class="time-cell">
+                                    @(item.Time?.ToString("MM-dd HH:mm"))
+                                </td>
+
+
+                                <td class="values-cell">
+
+                                    <div class="measurement-list @cpkClass">
+
+                                        @foreach (var value in item.Values)
+                                        {
+                                            <span class="measurement">
+                                                @value
+                                            </span>
+                                        }
+
+                                    </div>
+
+
+                                    @if (item.CPK.HasValue)
+                                    {
+                                        <div class="cpk-value @cpkClass">
+                                            CPK:
+                                            @item.CPK.Value.ToString("0.###")
+                                        </div>
+                                    }
+
+                                </td>
+                                <td class="edit-cell">
+
+                                    <button type="button"
+                                            class="iqc-edit-btn"
+                                            onclick="openIqcEdit(@item.ID)">
+                                        <i class="bi bi-pencil-square"></i>
+                                        Edit
+                                    </button>
+
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+
+                            <td colspan="22" class="no-data">
+
+                                <i class="bi bi-inbox"></i>
+
+                                <span>
+                                    No IQC test data found.
+                                </span>
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+            @{
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int pageSize = ViewBag.PageSize ?? 5;
+    int totalRecords = ViewBag.TotalRecords ?? 0;
+    int totalPages = ViewBag.TotalPages ?? 0;
+
+    int startRecord = totalRecords == 0
+        ? 0
+        : ((currentPage - 1) * pageSize) + 1;
+
+    int endRecord = Math.Min(
+        currentPage * pageSize,
+        totalRecords);
+}
+
+<div class="iqc-pagination">
+
+    <div class="iqc-pagination-info">
+        Showing
+        <strong>@startRecord</strong>
+        –
+        <strong>@endRecord</strong>
+        of
+        <strong>@totalRecords</strong>
+        records
+    </div>
+
+    @if (totalPages > 1)
+    {
+        <div class="iqc-pagination-controls">
+
+            @if (currentPage > 1)
+            {
+                <a class="iqc-page-btn iqc-page-prev"
+                   href="@Url.Action("Index", "IQCData", new {
+                       page = currentPage - 1,
+                       shift = selectedShift,
+                       date = selectedDate,
+                       vendor = selectedVendor,
+                       cpkLevel = selectedCpkLevel,
+                       part = selectedPart,
+                       parameter = selectedParameter
+                   })">
+                    <i class="bi bi-chevron-left"></i>
+                    Previous
+                </a>
+            }
+            else
+            {
+                <span class="iqc-page-btn iqc-page-prev disabled">
+                    <i class="bi bi-chevron-left"></i>
+                    Previous
+                </span>
+            }
+
+            @{
+                int startPage = Math.Max(1, currentPage - 2);
+                int endPage = Math.Min(totalPages, currentPage + 2);
+            }
+
+            @if (startPage > 1)
+            {
+                <a class="iqc-page-number"
+                   href="@Url.Action("Index", "IQCData", new {
+                       page = 1,
+                       shift = selectedShift,
+                       date = selectedDate,
+                       vendor = selectedVendor,
+                       cpkLevel = selectedCpkLevel,
+                       part = selectedPart,
+                       parameter = selectedParameter
+                   })">
+                    1
+                </a>
+
+                @if (startPage > 2)
+                {
+                    <span class="iqc-page-dots">...</span>
+                }
+            }
+
+            @for (int i = startPage; i <= endPage; i++)
+            {
+                if (i == currentPage)
+                {
+                    <span class="iqc-page-number active">
+                        @i
+                    </span>
+                }
+                else
+                {
+                    <a class="iqc-page-number"
+                       href="@Url.Action("Index", "IQCData", new {
+                           page = i,
+                           shift = selectedShift,
+                           date = selectedDate,
+                           vendor = selectedVendor,
+                           cpkLevel = selectedCpkLevel,
+                           part = selectedPart,
+                           parameter = selectedParameter
+                       })">
+                        @i
+                    </a>
+                }
+            }
+
+            @if (endPage < totalPages)
+            {
+                @if (endPage < totalPages - 1)
+                {
+                    <span class="iqc-page-dots">...</span>
+                }
+
+                <a class="iqc-page-number"
+                   href="@Url.Action("Index", "IQCData", new {
+                       page = totalPages,
+                       shift = selectedShift,
+                       date = selectedDate,
+                       vendor = selectedVendor,
+                       cpkLevel = selectedCpkLevel,
+                       part = selectedPart,
+                       parameter = selectedParameter
+                   })">
+                    @totalPages
+                </a>
+            }
+
+            @if (currentPage < totalPages)
+            {
+                <a class="iqc-page-btn iqc-page-next"
+                   href="@Url.Action("Index", "IQCData", new {
+                       page = currentPage + 1,
+                       shift = selectedShift,
+                       date = selectedDate,
+                       vendor = selectedVendor,
+                       cpkLevel = selectedCpkLevel,
+                       part = selectedPart,
+                       parameter = selectedParameter
+                   })">
+                    Next
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            }
+            else
+            {
+                <span class="iqc-page-btn iqc-page-next disabled">
+                    Next
+                    <i class="bi bi-chevron-right"></i>
+                </span>
+            }
+
+        </div>
+    }
+</div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- IQC EDIT MODAL -->
+<div class="iqc-edit-overlay"
+     id="iqcEditOverlay">
+
+    <div class="iqc-edit-modal">
+
+        <div class="iqc-edit-header">
+
+            <div>
+                <i class="bi bi-pencil-square"></i>
+                <span>Edit IQC Data</span>
+            </div>
+
+            <button type="button"
+                    class="iqc-edit-close"
+                    onclick="closeIqcEdit()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+
+        </div>
+
+
+        <form id="iqcEditForm">
+
+            <input type="hidden"
+                   id="editId"
+                   name="ID" />
+
+
+            <div class="iqc-edit-info">
+
+                <div>
+                    <label>Parameter</label>
+                    <span id="editParameter">-</span>
+                </div>
+
+                <div>
+                    <label>Lot ID</label>
+                    <span id="editLotId">-</span>
+                </div>
+
+                <div>
+                    <label>Time</label>
+                    <span id="editTime">-</span>
+                </div>
+
+            </div>
+
+
+            <div class="iqc-edit-limits">
+
+                <div class="edit-field">
+                    <label>Nominal</label>
+
+                    <input type="number"
+                           step="0.001"
+                           id="editNominal"
+                           name="Nominal" />
+                </div>
+
+                <div class="edit-field">
+                    <label>USL</label>
+
+                    <input type="number"
+                           step="0.001"
+                           id="editUSL"
+                           name="USL" />
+                </div>
+
+                <div class="edit-field">
+                    <label>LSL</label>
+
+                    <input type="number"
+                           step="0.001"
+                           id="editLSL"
+                           name="LSL" />
+                </div>
+
+            </div>
+
+
+            <div class="iqc-values-title">
+                Measurement Values
+                <span>(1 - 32)</span>
+            </div>
+
+
+            <div class="iqc-edit-values"
+                 id="iqcEditValues">
+
+                <!-- Values 1-32 will be generated here -->
+
+            </div>
+
+
+            <div class="iqc-edit-footer">
+
+                <button type="button"
+                        class="iqc-cancel-btn"
+                        onclick="closeIqcEdit()">
+                    Cancel
+                </button>
+
+                <button type="submit"
+                        class="iqc-save-btn">
+                    <i class="bi bi-check-lg"></i>
+                    Save Changes
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+@section Scripts {
+
+    <script>
+
+        function searchIQC() {
+
+            const params = new URLSearchParams();
+
+            const shift =
+                document.getElementById("shift").value;
+
+            const date =
+                document.getElementById("date").value;
+
+            const vendor =
+                document.getElementById("vendor").value;
+
+            const cpkLevel =
+                document.getElementById("cpkLevel").value;
+
+            const part =
+                document.getElementById("part").value;
+
+            const parameter =
+                document.getElementById("parameter").value;
+
+
+            if (shift)
+                params.append("shift", shift);
+
+            if (date)
+                params.append("date", date);
+
+            if (vendor)
+                params.append("vendor", vendor);
+
+            if (cpkLevel)
+                params.append("cpkLevel", cpkLevel);
+
+            if (part)
+                params.append("part", part);
+
+            if (parameter)
+                params.append("parameter", parameter);
+
+
+            window.location.href =
+                '@Url.Action("Index", "IQCData")' +
+                '?' +
+                params.toString();
+        }
+
+
+        function resetIQC() {
+
+            window.location.href =
+                '@Url.Action("Index", "IQCData")';
+        }
+
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            const cpkSelect = document.getElementById("cpkLevel");
+
+            function updateCpkColor() {
+
+                cpkSelect.classList.remove(
+                    "cpk-excellent",
+                    "cpk-good",
+                    "cpk-fail"
+                );
+
+                if (cpkSelect.value === "Excellent") {
+                    cpkSelect.classList.add("cpk-excellent");
+                }
+                else if (cpkSelect.value === "Good") {
+                    cpkSelect.classList.add("cpk-good");
+                }
+                else if (cpkSelect.value === "Fail") {
+                    cpkSelect.classList.add("cpk-fail");
+                }
+            }
+
+            cpkSelect.addEventListener("change", updateCpkColor);
+
+            updateCpkColor();
+        });
+
+                async function openIqcEdit(id) {
+
+            try {
+
+                const response =
+                    await fetch(
+                        '@Url.Action("GetForEdit", "IQCData")' +
+                        '?id=' + id
+                    );
+
+                if (!response.ok) {
+
+                    alert("Unable to load IQC data.");
+
+                    return;
+                }
+
+                const data = await response.json();
+
+                document.getElementById("editId").value =
+                    data.id;
+
+                document.getElementById("editParameter").textContent =
+                    data.parameter || "-";
+
+                document.getElementById("editLotId").textContent =
+                    data.lotId || "-";
+
+                document.getElementById("editTime").textContent =
+                    data.time || "-";
+
+                document.getElementById("editNominal").value =
+                    data.nominal ?? "";
+
+                document.getElementById("editUSL").value =
+                    data.usl ?? "";
+
+                document.getElementById("editLSL").value =
+                    data.lsl ?? "";
+
+
+                const container =
+                    document.getElementById("iqcEditValues");
+
+                container.innerHTML = "";
+
+
+                for (let i = 1; i <= 32; i++) {
+
+                    const value =
+                        data.values[i - 1] ?? "";
+
+                    const div =
+                        document.createElement("div");
+
+                    div.className =
+                        "iqc-edit-value";
+
+                    div.innerHTML = `
+                        <label>${i}</label>
+
+                        <input
+                            type="number"
+                            step="0.001"
+                            name="Value${i}"
+                            id="editValue${i}"
+                            value="${value}">
+                    `;
+
+                    container.appendChild(div);
+                }
+
+
+                document
+                    .getElementById("iqcEditOverlay")
+                    .classList.add("show");
+
+            }
+            catch (error) {
+
+                console.error(error);
+
+                alert("Error loading IQC data.");
+            }
+        }
+
+
+        function closeIqcEdit() {
+
+            document
+                .getElementById("iqcEditOverlay")
+                .classList.remove("show");
+        }
+
+
+        document
+            .getElementById("iqcEditOverlay")
+            .addEventListener("click", function (event) {
+
+                if (event.target === this) {
+
+                    closeIqcEdit();
+                }
+            });
+
+
+        document
+            .getElementById("iqcEditForm")
+            .addEventListener("submit", async function (event) {
+
+                event.preventDefault();
+
+                const form =
+                    event.target;
+
+                const formData =
+                    new FormData(form);
+
+
+                try {
+
+                    const response =
+                        await fetch(
+                            '@Url.Action("Update", "IQCData")',
+                            {
+                                method: "POST",
+                                body: formData
+                            }
+                        );
+
+
+                    const result =
+                        await response.json();
+
+
+                    if (result.success) {
+
+                        closeIqcEdit();
+
+                        location.reload();
+
+                    }
+                    else {
+
+                        alert(
+                            result.message ||
+                            "Unable to save changes."
+                        );
+                    }
+
+                }
+                catch (error) {
+
+                    console.error(error);
+
+                    alert(
+                        "An error occurred while saving."
+                    );
+                }
+
+            });
+    </script>
+}

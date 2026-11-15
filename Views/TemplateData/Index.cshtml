@@ -1,0 +1,379 @@
+﻿@model A246F_IQC_Monitoring.Models.TemplateDataPageViewModel
+
+@{
+    ViewData["Title"] = "Template Data";
+}
+
+<div class="template-page">
+
+    <!-- PAGE HEADER -->
+    <div class="page-card">
+
+        <!-- SEARCH AREA -->
+        <form method="get"
+              asp-controller="TemplateData"
+              asp-action="Index"
+              class="search-panel">
+
+            <div class="search-field">
+
+                <label for="templateId">Template ID</label>
+
+                <input type="text"
+                       id="templateId"
+                       name="templateId"
+                       value="@Model.TemplateId"
+                       class="form-control"
+                       placeholder="Enter Template ID" />
+
+            </div>
+
+            <div class="search-field">
+
+                <label for="part">Part</label>
+
+                <select id="part"
+                        name="part"
+                        class="form-select">
+
+                    <option value="">All</option>
+
+                    @foreach (var item in Model.Parts)
+                    {
+                        <option value="@item"
+                                selected="@(item == Model.Part)">
+                            @item
+                        </option>
+                    }
+
+                </select>
+
+            </div>
+
+            <div class="search-field">
+
+                <label for="vendor">Vendor</label>
+
+                <select id="vendor"
+                        name="vendor"
+                        class="form-select">
+
+                    <option value="">All</option>
+
+                    @foreach (var item in Model.Vendors)
+                    {
+                        <option value="@item"
+                                selected="@(item == Model.Vendor)">
+                            @item
+                        </option>
+                    }
+
+                </select>
+
+            </div>
+
+            <div class="search-field">
+
+                <label for="category">Category</label>
+
+                <select id="category"
+                        name="category"
+                        class="form-select">
+
+                    <option value="">All</option>
+
+                    @foreach (var item in Model.Categories)
+                    {
+                        <option value="@item"
+                                selected="@(item == Model.Category)">
+                            @item
+                        </option>
+                    }
+
+                </select>
+
+            </div>
+
+            <div class="search-buttons">
+
+                <button type="submit"
+                        class="btn-search">
+
+                    <i class="bi bi-search"></i>
+                    Search
+
+                </button>
+
+                <a asp-controller="TemplateData"
+                   asp-action="Index"
+                   class="btn-reset">
+
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                    Reset
+
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+
+    <!-- TABLE CARD -->
+    <div class="table-card">
+
+        <div class="table-card-header">
+
+            <div class="table-title">
+
+                <i class="bi bi-list-columns-reverse"></i>
+
+                <span>Template Data List</span>
+
+            </div>
+
+            <div class="total-count">
+
+                Total :
+                <strong>
+                    @Model.TotalRecords
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-danger mx-4 mt-3">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                @TempData["ErrorMessage"]
+            </div>
+        }
+
+
+        <div class="table-wrapper">
+
+            <table id="templateTable"
+                   class="template-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Template ID</th>
+                        <th>Part</th>
+                        <th>Vendor</th>
+                        <th>Parameter</th>
+                        <th>Category</th>
+                        <th>Unit</th>
+                        <th>Nominal</th>
+                        <th>USL</th>
+                        <th>LSL</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    @if (Model.Data.Any())
+                    {
+                        foreach (var item in Model.Data)
+                        {
+                            <tr>
+
+                                <td class="template-id">
+                                    @item.TemplateId
+                                </td>
+
+                                <td>
+                                    @item.Part
+                                </td>
+
+                                <td>
+                                    @item.Vendor
+                                </td>
+
+                                <td>
+                                    @item.Parameter
+                                </td>
+
+                                <td>
+                                    @item.Category
+                                </td>
+
+                                <td class="unit">
+                                    @item.Unit
+                                </td>
+
+                                <td class="number">
+                                    @(item.Nominal?.ToString("0.000") ?? "-")
+                                </td>
+
+                                <td class="number">
+                                    @(item.USL?.ToString("0.000") ?? "-")
+                                </td>
+
+                                <td class="number">
+                                    @(item.LSL?.ToString("0.000") ?? "-")
+                                </td>
+
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+
+                            <td colspan="9"
+                                class="no-data">
+
+                                <i class="bi bi-database-x"></i>
+
+                                <div>
+                                    No Template Data Found
+                                </div>
+
+                                <small>
+                                    Try changing your search filters.
+                                </small>
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+        <!-- FOOTER -->
+        <div class="table-footer">
+
+            <div id="showingText">
+
+                @if (Model.TotalRecords > 0)
+                {
+                    var start =
+                    ((Model.CurrentPage - 1) * Model.PageSize) + 1;
+
+                    var end =
+                    Math.Min(
+                    Model.CurrentPage * Model.PageSize,
+                    Model.TotalRecords);
+
+                    <span>
+                        Showing @start to @end
+                        of @Model.TotalRecords entries
+                    </span>
+                }
+                else
+                {
+                    <span>
+                        Showing 0 to 0 of 0 entries
+                    </span>
+                }
+
+            </div>
+
+
+            @if (Model.TotalPages > 1)
+            {
+                <div class="pagination-container">
+
+                    <!-- FIRST -->
+                    <a class="pagination-btn @(Model.CurrentPage == 1 ? "disabled" : "")"
+                       asp-action="Index"
+                       asp-route-templateId="@Model.TemplateId"
+                       asp-route-part="@Model.Part"
+                       asp-route-vendor="@Model.Vendor"
+                       asp-route-category="@Model.Category"
+                       asp-route-page="1">
+
+                        <i class="bi bi-chevron-double-left"></i>
+
+                    </a>
+
+
+                    <!-- PREVIOUS -->
+                    <a class="pagination-btn @(Model.CurrentPage == 1 ? "disabled" : "")"
+                       asp-action="Index"
+                       asp-route-templateId="@Model.TemplateId"
+                       asp-route-part="@Model.Part"
+                       asp-route-vendor="@Model.Vendor"
+                       asp-route-category="@Model.Category"
+                       asp-route-page="@(Model.CurrentPage - 1)">
+
+                        <i class="bi bi-chevron-left"></i>
+
+                    </a>
+
+
+                    @{
+                        var startPage =
+                        Math.Max(1, Model.CurrentPage - 2);
+
+                        var endPage =
+                        Math.Min(
+                        Model.TotalPages,
+                        Model.CurrentPage + 2);
+                    }
+
+
+                    @for (int i = startPage; i <= endPage; i++)
+                    {
+                        <a class="pagination-btn @(i == Model.CurrentPage ? "active" : "")"
+                           asp-action="Index"
+                           asp-route-templateId="@Model.TemplateId"
+                           asp-route-part="@Model.Part"
+                           asp-route-vendor="@Model.Vendor"
+                           asp-route-category="@Model.Category"
+                           asp-route-page="@i">
+
+                            @i
+
+                        </a>
+                    }
+
+
+                    <!-- NEXT -->
+                    <a class="pagination-btn @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")"
+                       asp-action="Index"
+                       asp-route-templateId="@Model.TemplateId"
+                       asp-route-part="@Model.Part"
+                       asp-route-vendor="@Model.Vendor"
+                       asp-route-category="@Model.Category"
+                       asp-route-page="@(Model.CurrentPage + 1)">
+
+                        <i class="bi bi-chevron-right"></i>
+
+                    </a>
+
+
+                    <!-- LAST -->
+                    <a class="pagination-btn @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")"
+                       asp-action="Index"
+                       asp-route-templateId="@Model.TemplateId"
+                       asp-route-part="@Model.Part"
+                       asp-route-vendor="@Model.Vendor"
+                       asp-route-category="@Model.Category"
+                       asp-route-page="@Model.TotalPages">
+
+                        <i class="bi bi-chevron-double-right"></i>
+
+                    </a>
+
+                </div>
+            }
+
+        </div>
+
+    </div>
+
+</div>
