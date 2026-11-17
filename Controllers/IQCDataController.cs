@@ -15,15 +15,18 @@ namespace A246F_IQC_Monitoring.Controllers
         }
 
         public async Task<IActionResult> Index(
-            string? shift,
-            DateTime? date,
-            string? vendor,
-            string? cpkLevel,
-            string? part,
-            string? parameter,
-            int page = 1)
+    string? shift,
+    DateTime? date,
+    string? vendor,
+    string? cpkLevel,
+    string? part,
+    string? parameter,
+    int page = 1)
         {
             var data = new List<IQCDataViewModel>();
+
+            // If no date is selected, automatically use TODAY
+            DateTime selectedDate = date?.Date ?? DateTime.Today;
 
             var connectionString =
                 _configuration.GetConnectionString("DefaultConnection");
@@ -34,55 +37,49 @@ namespace A246F_IQC_Monitoring.Controllers
             await connection.OpenAsync();
 
             var sql = @"
-                SELECT
-                    ID,
-                    WOM,
-                    Project,
-                    Site,
-                    Build,
-                    Inspection_Step,
-                    Station_ID,
-                    Part,
-                    Vendor,
-                    Lot_ID,
-                    Line_ID,
-                    Process,
-                    Category,
-                    Parameter,
-                    [Unique Identifier],
-                    Unit,
-                    Sampling_Plan,
-                    Nominal,
-                    USL,
-                    LSL,
-                    Time,
-                    [1],[2],[3],[4],[5],[6],[7],[8],
-                    [9],[10],[11],[12],[13],[14],[15],[16],
-                    [17],[18],[19],[20],[21],[22],[23],[24],
-                    [25],[26],[27],[28],[29],[30],[31],[32]
-                FROM master.dbo.IPQC_DIMENSION_REPORT_A246F
-                WHERE 1 = 1
-                ";
+        SELECT
+            ID,
+            WOM,
+            Project,
+            Site,
+            Build,
+            Inspection_Step,
+            Station_ID,
+            Part,
+            Vendor,
+            Lot_ID,
+            Line_ID,
+            Process,
+            Category,
+            Parameter,
+            [Unique Identifier],
+            Unit,
+            Sampling_Plan,
+            Nominal,
+            USL,
+            LSL,
+            Time,
+            [1],[2],[3],[4],[5],[6],[7],[8],
+            [9],[10],[11],[12],[13],[14],[15],[16],
+            [17],[18],[19],[20],[21],[22],[23],[24],
+            [25],[26],[27],[28],[29],[30],[31],[32]
+        FROM master.dbo.IPQC_DIMENSION_REPORT_A246F
+        WHERE Time >= @DateStart
+          AND Time < DATEADD(DAY, 1, @DateStart)
+    ";
 
             var parameters = new List<SqlParameter>();
 
-            if (date.HasValue)
-            {
-                sql += @"
-                    AND Time >= @DateStart
-                    AND Time < DATEADD(DAY, 1, @DateStart)
-                    ";
-
-                parameters.Add(
-                    new SqlParameter("@DateStart", SqlDbType.DateTime)
-                    {
-                        Value = date.Value.Date
-                    });
-            }
+            parameters.Add(
+                new SqlParameter("@DateStart", SqlDbType.DateTime)
+                {
+                    Value = selectedDate
+                });
 
             if (!string.IsNullOrWhiteSpace(vendor))
             {
                 sql += " AND Vendor = @Vendor ";
+
                 parameters.Add(
                     new SqlParameter("@Vendor", SqlDbType.NVarChar, 200)
                     {
@@ -93,6 +90,7 @@ namespace A246F_IQC_Monitoring.Controllers
             if (!string.IsNullOrWhiteSpace(part))
             {
                 sql += " AND Part = @Part ";
+
                 parameters.Add(
                     new SqlParameter("@Part", SqlDbType.NVarChar, 200)
                     {
@@ -103,6 +101,7 @@ namespace A246F_IQC_Monitoring.Controllers
             if (!string.IsNullOrWhiteSpace(parameter))
             {
                 sql += " AND Parameter = @Parameter ";
+
                 parameters.Add(
                     new SqlParameter("@Parameter", SqlDbType.NVarChar, 500)
                     {
@@ -174,10 +173,10 @@ namespace A246F_IQC_Monitoring.Controllers
                 }
 
                 item.CPK = CalculateCpk(
-                     item.Values,
-                     item.Nominal,
-                     item.USL,
-                     item.LSL);
+                    item.Values,
+                    item.Nominal,
+                    item.USL,
+                    item.LSL);
 
                 if (PassesCpkFilter(
                     item.CPK,
@@ -190,42 +189,29 @@ namespace A246F_IQC_Monitoring.Controllers
             await LoadFilterLists(connection);
 
             ViewBag.SelectedShift = shift;
+
+            // Always show the actual date being displayed
             ViewBag.SelectedDate =
-                date?.ToString("yyyy-MM-dd");
+                selectedDate.ToString("yyyy-MM-dd");
 
             ViewBag.SelectedVendor = vendor;
             ViewBag.SelectedCpkLevel = cpkLevel;
             ViewBag.SelectedPart = part;
             ViewBag.SelectedParameter = parameter;
 
-            const int pageSize = 5;
-
-            if (page < 1)
-            {
-                page = 1;
-            }
-
-            int totalRecords = data.Count;
-
-            int totalPages = (int)Math.Ceiling(
-                totalRecords / (double)pageSize);
-
-            if (totalPages > 0 && page > totalPages)
-            {
-                page = totalPages;
-            }
-
-            var pagedData = data
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
+            // Show only the latest single IQC record
+            var latestData = data
+                .OrderByDescending(x => x.Time)
+                .ThenByDescending(x => x.ID)
+                .Take(1)
                 .ToList();
 
-            ViewBag.CurrentPage = page;
-            ViewBag.PageSize = pageSize;
-            ViewBag.TotalRecords = totalRecords;
-            ViewBag.TotalPages = totalPages;
+            ViewBag.CurrentPage = 1;
+            ViewBag.PageSize = 1;
+            ViewBag.TotalRecords = latestData.Count;
+            ViewBag.TotalPages = latestData.Count > 0 ? 1 : 0;
 
-            return View(pagedData);
+            return View(latestData);
         }
 
         [HttpGet]
@@ -432,6 +418,41 @@ namespace A246F_IQC_Monitoring.Controllers
                     message = ex.Message
                 });
             }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var connectionString =
+                _configuration.GetConnectionString("DefaultConnection");
+
+            await using var connection =
+                new SqlConnection(connectionString);
+
+            await connection.OpenAsync();
+
+            const string sql = @"
+                DELETE FROM dbo.IPQC_DIMENSION_REPORT_A246F
+                WHERE ID = @ID";
+
+            await using var command =
+                new SqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("@ID", id);
+
+            var affectedRows = await command.ExecuteNonQueryAsync();
+
+            if (affectedRows == 0)
+            {
+                TempData["ErrorMessage"] = "Record not found or already deleted.";
+            }
+            else
+            {
+                TempData["SuccessMessage"] = "IQC record deleted successfully.";
+            }
+
+            return RedirectToAction(nameof(Index));
         }
 
         private static decimal? ParseDecimal(string? value)

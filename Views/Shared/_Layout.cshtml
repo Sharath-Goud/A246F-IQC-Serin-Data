@@ -76,6 +76,14 @@
 
             </a>
 
+            <a asp-controller="Report"
+               asp-action="Index"
+               class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Report" ? "active" : "")">
+
+                <i class="bi bi-file-earmark-bar-graph-fill"></i>
+                <span>Report</span>
+            </a>
+
         </div>
 
         <div class="sidebar-decoration"></div>

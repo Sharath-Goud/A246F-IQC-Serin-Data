@@ -185,16 +185,6 @@
 
             <div class="iqc-header-right">
 
-                <button type="button" class="iqc-export-btn">
-                    <i class="bi bi-download"></i>
-                    Export Data
-                </button>
-
-                <button type="button" class="iqc-serin-btn">
-                    <i class="bi bi-archive"></i>
-                    SerinExportData
-                </button>
-
                 <span class="iqc-record-count">
                     Total <strong>@ViewBag.TotalRecords</strong> records
                 </span>
@@ -360,7 +350,7 @@
 
 
                                 <td class="time-cell">
-                                    @(item.Time?.ToString("MM-dd HH:mm"))
+                                    @(item.Time?.ToString("dd-MM-yyyy HH:mm"))
                                 </td>
 
 
@@ -389,12 +379,35 @@
                                 </td>
                                 <td class="edit-cell">
 
-                                    <button type="button"
-                                            class="iqc-edit-btn"
-                                            onclick="openIqcEdit(@item.ID)">
-                                        <i class="bi bi-pencil-square"></i>
-                                        Edit
-                                    </button>
+                                    <div class="iqc-action-buttons">
+
+                                        <button type="button"
+                                                class="iqc-edit-btn"
+                                                onclick="openIqcEdit(@item.ID)">
+                                            <i class="bi bi-pencil-square"></i>
+                                            Edit
+                                        </button>
+
+                                        <form asp-controller="IQCData"
+                                              asp-action="Delete"
+                                              method="post"
+                                              onsubmit="return confirmIqcDelete();">
+
+                                            @Html.AntiForgeryToken()
+
+                                            <input type="hidden"
+                                                   name="id"
+                                                   value="@item.ID" />
+
+                                            <button type="submit"
+                                                    class="iqc-delete-btn">
+                                                <i class="bi bi-trash3"></i>
+                                                Delete
+                                            </button>
+
+                                        </form>
+
+                                    </div>
 
                                 </td>
                             </tr>
@@ -402,18 +415,13 @@
                     }
                     else
                     {
-                        <tr>
-
-                            <td colspan="22" class="no-data">
-
-                                <i class="bi bi-inbox"></i>
-
-                                <span>
-                                    No IQC test data found.
-                                </span>
-
+                        <tr class="no-data-row">
+                            <td colspan="22">
+                                <div class="no-data-content">
+                                    <i class="bi bi-inbox"></i>
+                                    <span>No IQC data available for today.</span>
+                                </div>
                             </td>
-
                         </tr>
                     }
 
@@ -948,4 +956,13 @@
 
             });
     </script>
+    <script>
+    function confirmIqcDelete() {
+
+        return confirm(
+            "Are you sure you want to delete this IQC record?\n\n" +
+            "This action cannot be undone."
+        );
+    }
+</script>
 }
